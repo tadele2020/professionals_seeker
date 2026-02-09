@@ -1,0 +1,39 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "softmed-2fe32",
+          "appId": "1:1006234958062:android:768497741ce0624a0adbff",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "softmed-2fe32",
+          "configurations": {
+            "android": "1:1006234958062:android:768497741ce0624a0adbff",
+            "ios": "1:1006234958062:ios:dd26d5b0e68ba9a30adbff",
+            "macos": "1:1006234958062:ios:dd26d5b0e68ba9a30adbff",
+            "web": "1:1006234958062:web:8a41b960a495115d0adbff",
+            "windows": "1:1006234958062:web:73e46fde318fb08c0adbff"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1006234958062",
+    "project_id": "softmed-2fe32",
+    "storage_bucket": "softmed-2fe32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1006234958062:android:768497741ce0624a0adbff",
+        "android_client_info": {
+          "package_name": "com.example.professionals_seeker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsAwmNVDi7PEHMTJN8XBWzeJ7h4MAmlsU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
