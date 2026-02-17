@@ -29,7 +29,7 @@ class _JobSeekerFormState extends State<JobSeekerForm> {
 
   // የ Google Apps Script URL (የመጀመሪያው በ /exec የሚያልቀው መሆኑን አረጋግጥ)
   final String googleSheetUrl =
-      "https://script.google.com/macros/s/AKfycbwXdWKXE32R25vVMHCvZKymgXi9lFST0lLChnxVN_iuUNvI1LFSUQWL4a2_-C8dxbI0/exec";
+      "https://script.google.com/macros/s/AKfycbyCNt68aE4lY7eZphWrUPgQLYDvnKd0w5afGOEShJ4_c2d41MtxvT3oRLJz5eX7u9M/exec";
 
   final List<String> _positionOptions = [
     'ቴክኒካል ማናጀር',
