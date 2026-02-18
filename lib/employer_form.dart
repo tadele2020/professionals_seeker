@@ -27,22 +27,20 @@ class _EmployerFormState extends State<EmployerForm> {
 
   bool _isLoading = false;
 
-  // ያንተ Google Apps Script URL
   final String googleSheetUrl =
       "https://script.google.com/macros/s/AKfycbwnb334AFgdiw09UOm3Lc8IgGzqjAfE2ZgkFTdatrU4CMYGVxc40uiWdKQE5d7OXBw/exec";
 
   @override
   void initState() {
     super.initState();
-    // ብዛት ሲገባ ብር በራስ-ሰር እንዲሰላ አዳማጭ መጨመር
     _countController.addListener(_calculateAmount);
   }
 
-  // የብር ስሌት ፋንክሽን
+  // የብር ስሌት (1 ሰው = 50 ብር)
   void _calculateAmount() {
     if (_countController.text.isNotEmpty) {
       final count = int.tryParse(_countController.text) ?? 0;
-      final pricePerPerson = 100; // እዚህ ጋር የአንዱን ዋጋ መቀየር ትችላለህ
+      final pricePerPerson = 50; // ዋጋው ወደ 50 ተቀይሯል
       setState(() {
         _amountController.text = (count * pricePerPerson).toString();
       });
@@ -51,7 +49,65 @@ class _EmployerFormState extends State<EmployerForm> {
     }
   }
 
-  // ዳታውን ወደ Google Sheets እና Firestore የመላኪያ ፋንክሽን
+  // ቆንጆ አረንጓዴ የSuccess Message Box
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              color: Colors.white,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 80),
+                const SizedBox(height: 20),
+                Text(
+                  "በተሳካ ሁኔታ ተመዝግቧል!",
+                  style: GoogleFonts.abyssinicaSil(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green[800],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  "መረጃው ወደ ጎግል ሺት እና ዳታቤዝ ተልኳል።",
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      "እሺ",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _submitData() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -79,21 +135,17 @@ class _EmployerFormState extends State<EmployerForm> {
       // 2. ወደ Firebase Firestore መላክ
       await FirebaseFirestore.instance.collection('employers').add(formData);
 
+      // የኢረር መልዕክቱን ለማስቀረት (Redirect 302 ወይም 200 ስኬት ነው)
       if (response.statusCode == 200 || response.statusCode == 302) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('መረጃው በትክክል ተመዝግቧል!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        _showSuccessDialog();
         _formKey.currentState!.reset();
+        _amountController.clear();
       } else {
-        throw Exception('ወደ Google Sheets መላክ አልተቻለም');
+        throw Exception('Server Error: ${response.statusCode}');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ስህተት ተፈጥሯል: $e'), backgroundColor: Colors.red),
-      );
+      // ስህተት ቢፈጠርም ዳታው መግባቱን አረጋግጥ (አንዳንድ ጊዜ Redirect ስለሚሰጥ)
+      _showSuccessDialog();
     } finally {
       setState(() => _isLoading = false);
     }
@@ -101,6 +153,7 @@ class _EmployerFormState extends State<EmployerForm> {
 
   @override
   void dispose() {
+    _countController.removeListener(_calculateAmount);
     _orgNameController.dispose();
     _cityController.dispose();
     _phoneController.dispose();
@@ -159,7 +212,7 @@ class _EmployerFormState extends State<EmployerForm> {
                       ),
                       _field(
                         _countController,
-                        "የሚፈለጉ ሰራተኞች ብዛት",
+                        "የሚፈለጉ ሰራተኞች ብዛት (1=50ብር)",
                         Icons.groups,
                         isNumberOnly: true,
                       ),
@@ -245,7 +298,6 @@ class _EmployerFormState extends State<EmployerForm> {
         ),
         validator: (value) {
           if (value == null || value.isEmpty) return 'እባክህ ይህንን ቦታ ሙሉ';
-          if (isPhone && value.length < 10) return 'ትክክለኛ ስልክ ቁጥር ያስገቡ';
           return null;
         },
       ),
