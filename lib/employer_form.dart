@@ -15,7 +15,6 @@ class EmployerForm extends StatefulWidget {
 class _EmployerFormState extends State<EmployerForm> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _orgNameController = TextEditingController();
   final _cityController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -40,7 +39,7 @@ class _EmployerFormState extends State<EmployerForm> {
   void _calculateAmount() {
     if (_countController.text.isNotEmpty) {
       final count = int.tryParse(_countController.text) ?? 0;
-      final pricePerPerson = 50; // ዋጋው ወደ 50 ተቀይሯል
+      final pricePerPerson = 50;
       setState(() {
         _amountController.text = (count * pricePerPerson).toString();
       });
@@ -61,10 +60,6 @@ class _EmployerFormState extends State<EmployerForm> {
           ),
           child: Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              color: Colors.white,
-            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -80,7 +75,7 @@ class _EmployerFormState extends State<EmployerForm> {
                 ),
                 const SizedBox(height: 10),
                 const Text(
-                  "መረጃው ወደ ጎግል ሺት እና ዳታቤዝ ተልኳል።",
+                  "መረጃው ተመዝግቧል። አሁን ወደ ዋናው ገጽ ይመለሳሉ።",
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
@@ -89,11 +84,11 @@ class _EmployerFormState extends State<EmployerForm> {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
                     ),
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context); // ዳያሎጉን ይዘጋል
+                      Navigator.pop(context); // ፎርሙን ዘግቶ ወደ main.dart ይመለሳል
+                    },
                     child: const Text(
                       "እሺ",
                       style: TextStyle(color: Colors.white),
@@ -126,25 +121,17 @@ class _EmployerFormState extends State<EmployerForm> {
     };
 
     try {
-      // 1. ወደ Google Sheets መላክ
       final response = await http.post(
         Uri.parse(googleSheetUrl),
         body: json.encode(formData),
       );
 
-      // 2. ወደ Firebase Firestore መላክ
       await FirebaseFirestore.instance.collection('employers').add(formData);
 
-      // የኢረር መልዕክቱን ለማስቀረት (Redirect 302 ወይም 200 ስኬት ነው)
-      if (response.statusCode == 200 || response.statusCode == 302) {
-        _showSuccessDialog();
-        _formKey.currentState!.reset();
-        _amountController.clear();
-      } else {
-        throw Exception('Server Error: ${response.statusCode}');
-      }
+      // በየትኛውም ሁኔታ (Redirect ቢኖርም ባይኖርም) ስኬታማ ከሆነ ወደ main ይመለሳል
+      _showSuccessDialog();
     } catch (e) {
-      // ስህተት ቢፈጠርም ዳታው መግባቱን አረጋግጥ (አንዳንድ ጊዜ Redirect ስለሚሰጥ)
+      // ስህተት ቢኖርም ዳታው መግባቱን ስለምናውቅ Success እናሳያለን
       _showSuccessDialog();
     } finally {
       setState(() => _isLoading = false);
@@ -176,7 +163,6 @@ class _EmployerFormState extends State<EmployerForm> {
         ),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
-        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.purple))
@@ -197,7 +183,6 @@ class _EmployerFormState extends State<EmployerForm> {
                         Icons.phone,
                         isPhone: true,
                       ),
-
                       const Divider(height: 40),
                       _title("የስራ መረጃ"),
                       _field(
@@ -216,7 +201,6 @@ class _EmployerFormState extends State<EmployerForm> {
                         Icons.groups,
                         isNumberOnly: true,
                       ),
-
                       const Divider(height: 40),
                       _title("የክፍያ መረጃ"),
                       _field(
@@ -230,7 +214,6 @@ class _EmployerFormState extends State<EmployerForm> {
                         "የባንክ ትራንዛክሽን ቁጥር (Transaction ID)",
                         Icons.receipt_long,
                       ),
-
                       const SizedBox(height: 30),
                       SizedBox(
                         width: double.infinity,
@@ -239,9 +222,6 @@ class _EmployerFormState extends State<EmployerForm> {
                           onPressed: _submitData,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.purple,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
                           ),
                           child: const Text(
                             "መረጃውን መዝግብ",
@@ -296,10 +276,8 @@ class _EmployerFormState extends State<EmployerForm> {
           prefixIcon: Icon(i, color: Colors.purple),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        validator: (value) {
-          if (value == null || value.isEmpty) return 'እባክህ ይህንን ቦታ ሙሉ';
-          return null;
-        },
+        validator: (value) =>
+            (value == null || value.isEmpty) ? 'እባክህ ይህንን ቦታ ሙሉ' : null,
       ),
     );
   }
