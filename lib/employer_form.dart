@@ -15,6 +15,7 @@ class EmployerForm extends StatefulWidget {
 class _EmployerFormState extends State<EmployerForm> {
   final _formKey = GlobalKey<FormState>();
 
+  // Controllers
   final _orgNameController = TextEditingController();
   final _cityController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -26,206 +27,184 @@ class _EmployerFormState extends State<EmployerForm> {
 
   bool _isLoading = false;
 
+  // ያንተ Google Apps Script URL
   final String googleSheetUrl =
-      "https://script.google.com/macros/s/AKfycbxdecUMcVGbmbmwSjWdNBHOJ7Fa69g99bP3_yp_ajRkBGnCPZK0xorYDenOCeYSqB8/exec";
+      "https://script.google.com/macros/s/AKfycbwnb334AFgdiw09UOm3Lc8IgGzqjAfE2ZgkFTdatrU4CMYGVxc40uiWdKQE5d7OXBw/exec";
 
   @override
   void initState() {
     super.initState();
-    // ብዛት ሲገባ ብር በራስ-ሰር እንዲሰላ
+    // ብዛት ሲገባ ብር በራስ-ሰር እንዲሰላ አዳማጭ መጨመር
     _countController.addListener(_calculateAmount);
   }
 
+  // የብር ስሌት ፋንክሽን
   void _calculateAmount() {
-    final count = int.tryParse(_countController.text) ?? 0;
-    if (count > 0) {
-      _amountController.text = (count * 50).toString();
+    if (_countController.text.isNotEmpty) {
+      final count = int.tryParse(_countController.text) ?? 0;
+      final pricePerPerson = 100; // እዚህ ጋር የአንዱን ዋጋ መቀየር ትችላለህ
+      setState(() {
+        _amountController.text = (count * pricePerPerson).toString();
+      });
     } else {
-      _amountController.text = "";
+      _amountController.clear();
+    }
+  }
+
+  // ዳታውን ወደ Google Sheets እና Firestore የመላኪያ ፋንክሽን
+  Future<void> _submitData() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final Map<String, dynamic> formData = {
+      "orgName": _orgNameController.text,
+      "city": _cityController.text,
+      "phone": _phoneController.text,
+      "professionType": _professionTypeController.text,
+      "jobPosition": _jobPositionController.text,
+      "count": _countController.text,
+      "amount": _amountController.text,
+      "transactionId": _transactionIdController.text,
+      "submittedAt": DateTime.now().toIso8601String(),
+    };
+
+    try {
+      // 1. ወደ Google Sheets መላክ
+      final response = await http.post(
+        Uri.parse(googleSheetUrl),
+        body: json.encode(formData),
+      );
+
+      // 2. ወደ Firebase Firestore መላክ
+      await FirebaseFirestore.instance.collection('employers').add(formData);
+
+      if (response.statusCode == 200 || response.statusCode == 302) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('መረጃው በትክክል ተመዝግቧል!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        _formKey.currentState!.reset();
+      } else {
+        throw Exception('ወደ Google Sheets መላክ አልተቻለም');
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('ስህተት ተፈጥሯል: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
   @override
   void dispose() {
+    _orgNameController.dispose();
+    _cityController.dispose();
+    _phoneController.dispose();
+    _professionTypeController.dispose();
+    _jobPositionController.dispose();
     _countController.dispose();
+    _amountController.dispose();
+    _transactionIdController.dispose();
     super.dispose();
-  }
-
-  Future<void> _submitEmployerForm() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    // የክፍያ ማረጋገጫ ሎጂክ
-    final count = int.tryParse(_countController.text) ?? 0;
-    final amountPaid = int.tryParse(_amountController.text) ?? 0;
-    final expectedAmount = count * 50;
-
-    if (amountPaid < expectedAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text('ስህተት፡ ለ $count ባለሙያ $expectedAmount ብር መክፈል አለብዎት!'),
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isLoading = true);
-
-    final Map<String, dynamic> employerData = {
-      'organizationName': _orgNameController.text.trim(),
-      'city': _cityController.text.trim(),
-      'phoneNumber': _phoneController.text.trim(),
-      'professionNeeded': _professionTypeController.text.trim(),
-      'jobPosition': _jobPositionController.text.trim(),
-      'professionalCount': _countController.text.trim(),
-      'amountPaid': _amountController.text.trim(),
-      'transactionId': _transactionIdController.text.trim(),
-    };
-
-    try {
-      await FirebaseFirestore.instance.collection('employers').add({
-        ...employerData,
-        'submittedAt': FieldValue.serverTimestamp(),
-      });
-
-      try {
-        await http.post(
-          Uri.parse(googleSheetUrl),
-          headers: {"Content-Type": "application/json"},
-          body: json.encode(employerData),
-        );
-      } catch (e) {
-        debugPrint("Google Sheet error: $e");
-      }
-
-      setState(() => _isLoading = false);
-      _showSuccessDialog();
-    } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('ስህተት ተፈጥሯል: $e')));
-    }
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Icon(Icons.check_circle, color: Colors.purple, size: 70),
-        content: const Text(
-          'የቀጣሪ መረጃዎ በትክክል ተመዝግቧል!',
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          Center(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.purple),
-              child: const Text('እሺ', style: TextStyle(color: Colors.white)),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('የቀጣሪዎች መመዝገቢያ', style: GoogleFonts.notoSansEthiopic()),
+        title: Text(
+          'የአሰሪዎች መመዝገቢያ ፎርም',
+          style: GoogleFonts.abyssinicaSil(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _sectionTitle('የድርጅት መረጃ'),
-              _buildField(
-                _orgNameController,
-                'የባለሙያ ፈላጊ ድርጅት ሥም',
-                Icons.business,
-              ),
-              _buildField(_cityController, 'አድራሻ (ከተማ)', Icons.location_on),
-              _buildField(
-                _phoneController,
-                'ስልክ ቁጥር',
-                Icons.phone,
-                isPhone: true,
-              ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.purple))
+          : SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _title("የድርጅት መረጃ"),
+                      _field(_orgNameController, "የድርጅት ስም", Icons.business),
+                      _field(_cityController, "ከተማ", Icons.location_city),
+                      _field(
+                        _phoneController,
+                        "ስልክ ቁጥር",
+                        Icons.phone,
+                        isPhone: true,
+                      ),
 
-              const SizedBox(height: 20),
-              _sectionTitle('የፍላጎት ዝርዝር'),
-              _buildField(
-                _professionTypeController,
-                'የሚፈልገው ባለሙያ ዓይነት',
-                Icons.person_search,
-              ),
-              _buildField(_jobPositionController, 'በየትኛው የስራ መደብ?', Icons.work),
-              _buildField(
-                _countController,
-                'የሚፈልገው ባለሙያ ብዛት',
-                Icons.group,
-                isNumberOnly: true,
-              ),
+                      const Divider(height: 40),
+                      _title("የስራ መረጃ"),
+                      _field(
+                        _professionTypeController,
+                        "የሙያ ዘርፍ",
+                        Icons.work_outline,
+                      ),
+                      _field(
+                        _jobPositionController,
+                        "የስራ መደብ",
+                        Icons.assignment_ind,
+                      ),
+                      _field(
+                        _countController,
+                        "የሚፈለጉ ሰራተኞች ብዛት",
+                        Icons.groups,
+                        isNumberOnly: true,
+                      ),
 
-              const SizedBox(height: 20),
-              _sectionTitle('የክፍያ መረጃ (CBE) - 1 ሰው 50 ብር'),
-              _buildField(
-                _amountController,
-                'መከፈል ያለበት ብር',
-                Icons.money,
-                isNumberOnly: true,
-                readOnly: true,
-              ),
-              _buildField(
-                _transactionIdController,
-                'Transaction ID NO of CBE',
-                Icons.receipt_long,
-              ),
+                      const Divider(height: 40),
+                      _title("የክፍያ መረጃ"),
+                      _field(
+                        _amountController,
+                        "አጠቃላይ ክፍያ",
+                        Icons.money,
+                        readOnly: true,
+                      ),
+                      _field(
+                        _transactionIdController,
+                        "የባንክ ትራንዛክሽን ቁጥር (Transaction ID)",
+                        Icons.receipt_long,
+                      ),
 
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _submitEmployerForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.purple,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'መረጃውን ላክ',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                      const SizedBox(height: 30),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: _submitData,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            "መረጃውን መዝግብ",
+                            style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
-  Widget _sectionTitle(String t) => Padding(
+  Widget _title(String t) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 10),
     child: Text(
       t,
@@ -237,10 +216,10 @@ class _EmployerFormState extends State<EmployerForm> {
     ),
   );
 
-  Widget _buildField(
-    TextEditingController controller,
-    String label,
-    IconData icon, {
+  Widget _field(
+    TextEditingController c,
+    String l,
+    IconData i, {
     bool isPhone = false,
     bool isNumberOnly = false,
     bool readOnly = false,
@@ -248,43 +227,25 @@ class _EmployerFormState extends State<EmployerForm> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
       child: TextFormField(
-        controller: controller,
+        controller: c,
         readOnly: readOnly,
-        // ስልክ ወይም ቁጥር ከሆነ የቁጥር ኪቦርድ ብቻ እንዲመጣ
         keyboardType: (isPhone || isNumberOnly)
             ? TextInputType.number
             : TextInputType.text,
         inputFormatters: [
-          // ስልክ ወይም ቁጥር ከሆነ ቁጥር ብቻ እንዲቀበል
           if (isPhone || isNumberOnly) FilteringTextInputFormatter.digitsOnly,
-          // ስልክ ከሆነ ከ 10 ቁጥር በላይ እንዳይቀበል
           if (isPhone) LengthLimitingTextInputFormatter(10),
         ],
         decoration: InputDecoration(
-          labelText: label,
+          labelText: l,
           filled: readOnly,
           fillColor: readOnly ? Colors.grey[200] : Colors.transparent,
-          prefixIcon: Icon(icon, color: Colors.purple),
+          prefixIcon: Icon(i, color: Colors.purple),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Colors.purple, width: 2),
-          ),
         ),
         validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'እባክዎ ይህንን ቦታ ይሙሉ';
-          }
-          if (isPhone) {
-            // ስልክ ቁጥሩ በ 09 ወይም በ 07 መጀመሩን ያረጋግጣል
-            if (!value.startsWith('09') && !value.startsWith('07')) {
-              return 'ስልክ ቁጥር በ 09 ወይም 07 መጀመር አለበት';
-            }
-            // ስልክ ቁጥሩ በትክክል 10 ዲጂት መሆኑን ያረጋግጣል
-            if (value.length != 10) {
-              return 'ስልክ ቁጥር 10 ዲጂት መሆን አለበት';
-            }
-          }
+          if (value == null || value.isEmpty) return 'እባክህ ይህንን ቦታ ሙሉ';
+          if (isPhone && value.length < 10) return 'ትክክለኛ ስልክ ቁጥር ያስገቡ';
           return null;
         },
       ),
