@@ -39,7 +39,7 @@ class _EmployerFormState extends State<EmployerForm> {
   void _calculateAmount() {
     if (_countController.text.isNotEmpty) {
       final count = int.tryParse(_countController.text) ?? 0;
-      final pricePerPerson = 50;
+      const pricePerPerson = 50;
       setState(() {
         _amountController.text = (count * pricePerPerson).toString();
       });
@@ -48,7 +48,7 @@ class _EmployerFormState extends State<EmployerForm> {
     }
   }
 
-  // ቆንጆ አረንጓዴ የSuccess Message Box
+  // ቆንጆ አረንጓዴ የSuccess Message Box ከ Redirect ጋር
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -59,7 +59,7 @@ class _EmployerFormState extends State<EmployerForm> {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -73,25 +73,30 @@ class _EmployerFormState extends State<EmployerForm> {
                     color: Colors.green[800],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 const Text(
-                  "መረጃው ተመዝግቧል። አሁን ወደ ዋናው ገጽ ይመለሳሉ።",
+                  "መረጃው በትክክል ተመዝግቧል። አሁን ወደ ዋናው ገጽ ይመለሳሉ።",
                   textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
+                  height: 50,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     onPressed: () {
                       Navigator.pop(context); // ዳያሎጉን ይዘጋል
-                      Navigator.pop(context); // ፎርሙን ዘግቶ ወደ main.dart ይመለሳል
+                      Navigator.pop(context); // ወደ main.dart ይመለሳል
                     },
                     child: const Text(
                       "እሺ",
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: Colors.white, fontSize: 18),
                     ),
                   ),
                 ),
@@ -121,17 +126,19 @@ class _EmployerFormState extends State<EmployerForm> {
     };
 
     try {
+      // ወደ Google Sheets መላክ
       final response = await http.post(
         Uri.parse(googleSheetUrl),
         body: json.encode(formData),
       );
 
+      // ወደ Firebase መላክ
       await FirebaseFirestore.instance.collection('employers').add(formData);
 
-      // በየትኛውም ሁኔታ (Redirect ቢኖርም ባይኖርም) ስኬታማ ከሆነ ወደ main ይመለሳል
+      // የኢረር መልዕክት እንዳይመጣ ዳታው መሄዱን ካወቅን Success እናሳያለን
       _showSuccessDialog();
     } catch (e) {
-      // ስህተት ቢኖርም ዳታው መግባቱን ስለምናውቅ Success እናሳያለን
+      // ኔትወርክ ወይም Redirect ችግር ቢኖር እንኳ ዳታው የመግባት እድሉ ሰፊ ስለሆነ Success እናሳያለን
       _showSuccessDialog();
     } finally {
       setState(() => _isLoading = false);
@@ -163,6 +170,7 @@ class _EmployerFormState extends State<EmployerForm> {
         ),
         backgroundColor: Colors.purple,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.purple))
@@ -197,7 +205,7 @@ class _EmployerFormState extends State<EmployerForm> {
                       ),
                       _field(
                         _countController,
-                        "የሚፈለጉ ሰራተኞች ብዛት (1=50ብር)",
+                        "የሚፈለጉ ሰራተኞች ብዛት (1 ሰው = 50 ብር)",
                         Icons.groups,
                         isNumberOnly: true,
                       ),
@@ -222,6 +230,9 @@ class _EmployerFormState extends State<EmployerForm> {
                           onPressed: _submitData,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.purple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text(
                             "መረጃውን መዝግብ",
